@@ -1,13 +1,13 @@
 import { defineStore } from 'pinia'
 
 const defaultPrompt = {
-  id: null,
-  attributes: {
-      role: '',
-      context: '',
-      constraints: '',
-      defaultInput: ''
-  }
+    id: null,
+    attributes: {
+        role: '',
+        context: '',
+        constraints: '',
+        defaultInput: ''
+    }
 };
 
 export const usePromptStore = defineStore('prompt', {
@@ -15,30 +15,31 @@ export const usePromptStore = defineStore('prompt', {
         prompts: [],
         loading: false,
         AIResponse: '',
-        selectedPrompt : defaultPrompt,
-        messages: []
+        selectedPrompt: defaultPrompt,
+        messages: [],
+        loadingAIResponse: false
     }),
     getters: {
-        getPrompts(state){
+        getPrompts(state) {
             return state.prompts
         },
-        getLoading(state){
+        getLoading(state) {
             return state.loading
         },
-        getAIResponse(state){
+        getAIResponse(state) {
             return state.AIResponse
         }
 
     },
     actions: {
-        resetPrompt(){
+        resetPrompt() {
             this.selectedPrompt = defaultPrompt;
             this.messages = []
         },
-        async fetchPrompts( query ) {
+        async fetchPrompts(query) {
             try {
                 this.loading = true;
-                const response = await this.axios.get('/prompts?sort=id:desc' )
+                const response = await this.axios.get('/prompts?sort=id:desc')
                 this.prompts = response.data.data
                 this.loading = false;
             }
@@ -48,9 +49,10 @@ export const usePromptStore = defineStore('prompt', {
             }
         },
 
-         async submitPrompt( text ) {
-             if(this.loading)
-                 return;
+        async submitPromptToChatGpt(text) {
+
+            if (this.loadingAIResponse)
+                return;
 
             const message = {
                 role: 'user',
@@ -59,29 +61,28 @@ export const usePromptStore = defineStore('prompt', {
             this.messages.push(message);
 
             try {
-                this.loading = true;
-                const response = await this.axios.post('/submit' ,  { messages : this.messages })
+                this.loadingAIResponse = true;
+                const response = await this.axios.post('/submit', { messages: this.messages })
                 this.messages.push(response.data);
-                this.loading = false;
+                this.loadingAIResponse = false;
             }
             catch (error) {
-                this.AIResponse = ''
-                this.loading = false;
+                this.loadingAIResponse = false;
             }
         },
-        async savePrompt(  ) {
+        async savePrompt() {
 
-            if(this.loading)
+            if (this.loading)
                 return;
 
             try {
                 this.loading = true;
-                if(this.selectedPrompt.id){
-                    const response = await this.axios.put('/prompts/' + this.selectedPrompt.id ,  { data : this.selectedPrompt.attributes })
+                if (this.selectedPrompt.id) {
+                    const response = await this.axios.put('/prompts/' + this.selectedPrompt.id, { data: this.selectedPrompt.attributes })
                     this.loading = false;
                 }
-                else{
-                    const response = await this.axios.post('/prompts' ,  { data : this.selectedPrompt.attributes })
+                else {
+                    const response = await this.axios.post('/prompts', { data: this.selectedPrompt.attributes })
                     this.loading = false;
                     await this.fetchPrompts()
                 }
@@ -95,7 +96,24 @@ export const usePromptStore = defineStore('prompt', {
             }
         },
 
+        async deletePrompt( promptId ) {
+
+            if (this.loading)
+                return;
+
+            try {
+                this.loading = true;
+
+                const response = await this.axios.delete('/prompts/' + promptId, { data: this.selectedPrompt.attributes })
+                this.loading = false;
+                this.prompts = this.prompts.filter((prompt) => {return   prompt.id !== promptId })
 
 
+            }
+            catch (error) {
+                console.log(error.message)
+                this.loading = false;
+            }
+        },
     },
 })
